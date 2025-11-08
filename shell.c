@@ -1,11 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-
-extern char **environ;
+#include "shell.h"
 
 /**
  * get_path_variable - Retrieves the PATH environment variable
@@ -15,11 +8,10 @@ extern char **environ;
 char *get_path_variable(void)
 {
 	int i = 0;
-	char *path_prefix = "PATH=";
 
 	while (environ && environ[i])
 	{
-		if (strncmp(environ[i], path_prefix, 5) == 0)
+		if (strncmp(environ[i], "PATH=", 5) == 0)
 			return (environ[i] + 5);
 		i++;
 	}
@@ -121,87 +113,134 @@ void print_env(void)
 }
 
 /**
+ * handle_builtins - Handles built-in commands
+ * @buffer: Input command
+ *
+ * Return: 1 if built-in handled, 0 otherwise
+ */
+int handle_builtins(char *buffer)
+{
+	if (strcmp(buffer, "exit") == 0)
+	{
+		free(buffer);
+		exit(0);
+	}
+
+	if (strcmp(buffer, "env") == 0)
+	{
+		print_env();
+		return (1);
+	}
+
+	return (0);
+}
+
+/**
+ * execute_command - Executes external command
+ * @args: Command arguments
+ * @command_path: Full path to command
+ */
+void execute_command(char **args, char *command_path)
+{
+	pid_t pid;
+	int status;
+
+	pid = fork();
+	if (pid == -1)
+	{
+		perror("Error:");
+		return;
+	}
+
+	if (pid == 0)
+	{
+		if (execve(command_path, args, environ) == -1)
+		{
+			perror("./shell");
+			exit(2);
+		}
+	}
+	else
+	{
+		wait(&status);
+	}
+}
+
+/**
+ * read_input - Reads input from user
+ * @buffer: Buffer to store input
+ * @bufsize: Size of buffer
+ * @is_interactive: Whether in interactive mode
+ *
+ * Return: Number of characters read
+ */
+int read_input(char **buffer, size_t *bufsize, int is_interactive)
+{
+	ssize_t characters;
+
+	if (is_interactive)
+		write(STDOUT_FILENO, ":) ", 3);
+
+	characters = getline(buffer, bufsize, stdin);
+	if (characters == -1)
+	{
+		if (is_interactive)
+			write(STDOUT_FILENO, "\n", 1);
+		return (-1);
+	}
+
+	(*buffer)[characters - 1] = '\0';
+	return (characters);
+}
+
+/**
+ * process_command - Processes a single command
+ * @buffer: Command string
+ */
+void process_command(char *buffer)
+{
+	char **args;
+	char *command_path;
+
+	if (strlen(buffer) == 0)
+		return;
+
+	if (handle_builtins(buffer))
+		return;
+
+	args = tokenize_command(buffer);
+	command_path = find_command_path(args[0]);
+
+	if (!command_path)
+	{
+		fprintf(stderr, "%s: command not found\n", args[0]);
+		free(args);
+		return;
+	}
+
+	execute_command(args, command_path);
+	free(command_path);
+	free(args);
+}
+
+/**
  * main - Simple shell entry point
  *
  * Return: Exit status
  */
 int main(void)
 {
-	char *buffer = NULL, *command_path;
-	char **args;
+	char *buffer = NULL;
 	size_t bufsize = 0;
-	ssize_t characters;
-	pid_t pid;
-	int status;
 	int is_interactive = isatty(STDIN_FILENO);
+	int status = 0;
 
 	while (1)
 	{
-		if (is_interactive)
-			write(STDOUT_FILENO, ":) ", 3);
-
-		characters = getline(&buffer, &bufsize, stdin);
-		if (characters == -1)
-		{
-			if (is_interactive)
-				write(STDOUT_FILENO, "\n", 1);
+		if (read_input(&buffer, &bufsize, is_interactive) == -1)
 			break;
-		}
 
-		buffer[characters - 1] = '\0';
-
-		if (strlen(buffer) == 0)
-			continue;
-
-		if (strcmp(buffer, "exit") == 0)
-		{
-			free(buffer);
-			exit(0);
-		}
-
-		if (strcmp(buffer, "env") == 0)
-		{
-			print_env();
-			continue;
-		}
-
-		args = tokenize_command(buffer);
-		command_path = find_command_path(args[0]);
-
-		if (!command_path)
-		{
-			fprintf(stderr, "%s: command not found\n", args[0]);
-			free(args);
-			continue;
-		}
-
-		pid = fork();
-		if (pid == -1)
-		{
-			perror("Error:");
-			free(args);
-			free(command_path);
-			break;
-		}
-		if (pid == 0)
-		{
-			if (execve(command_path, args, environ) == -1)
-			{
-				perror("./shell");
-				free(args);
-				free(command_path);
-				exit(2);
-			}
-		}
-		else
-		{
-			wait(&status);
-			if (WIFEXITED(status))
-				status = WEXITSTATUS(status);
-		}
-
-		free(command_path);
-		free(args);
+		process_command(buffer);
 	}
 
 	free(buffer);
