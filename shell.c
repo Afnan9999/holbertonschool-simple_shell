@@ -1,3 +1,56 @@
+#include "shell.h"
+
+int main(void)
+{
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+    char *args[2];
+    pid_t pid;
+
+    while (1)
+    {
+        if (isatty(STDIN_FILENO))
+            write(STDOUT_FILENO, "$ ", 2);
+
+        nread = getline(&line, &len, stdin);
+        if (nread == -1)
+        {
+            free(line);
+            exit(0);
+        }
+
+        line[strcspn(line, "\n")] = '\0';  // إزالة السطر الجديد
+        if (line[0] == '\0')
+            continue;
+
+        args[0] = line;
+        args[1] = NULL;
+
+        pid = fork();
+        if (pid == -1)
+        {
+            perror("fork");
+            free(line);
+            exit(1);
+        }
+
+        if (pid == 0)
+        {
+            execve(args[0], args, environ);
+            perror(args[0]);
+            exit(127);
+        }
+        else
+        {
+            wait(NULL);
+        }
+    }
+
+    free(line);
+    return 0;
+}
+
 #ifndef SHELL_H
 #define SHELL_H
 
@@ -6,18 +59,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
-#include <sys/stat.h>
 
 extern char **environ;
 
-/* Function prototypes */
-char *get_path_variable(void);
-char *find_command_path(char *command);
-char **tokenize_command(char *buffer);
-void print_env(void);
-int handle_builtins(char *buffer);
-void execute_command(char **args, char *command_path);
-int read_input(char **buffer, size_t *bufsize, int is_interactive);
-void process_command(char *buffer);
+#endif
 
-#endif /* SHELL_H */
+
