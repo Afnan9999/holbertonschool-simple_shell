@@ -1,4 +1,4 @@
-#include "shell.h"
+cat > shell.c << 'EOF'
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 
 extern char **environ;
+char *find_command_path(char *command);
+void print_env(void);
 
 int main(void)
 {
@@ -25,6 +27,12 @@ int main(void)
 
         if (strcmp(line, "exit") == 0)
             break;
+
+        if (strcmp(line, "env") == 0)
+        {
+            print_env();
+            continue;
+        }
 
         args[0] = line;
         args[1] = NULL;
@@ -53,3 +61,4 @@ int main(void)
     free(line);
     return (0);
 }
+EOF
