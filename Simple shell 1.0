@@ -1,0 +1,41 @@
+#include "shell.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/**
+ * main - Entry point of the shell
+ *
+ * Return: Always 0 (Success)
+ */
+int main(void)
+{
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    while (1)
+    {
+        printf("$ ");
+        read = getline(&line, &len, stdin);
+        if (read == -1)
+        {
+            free(line);
+            break;
+        }
+
+        line[strcspn(line, "\n")] = '\0';
+
+        if (strcmp(line, "env") == 0)
+            print_env();
+        else if (strcmp(line, "exit") == 0)
+        {
+            free(line);
+            break;
+        }
+        else
+            execute_command(line);
+    }
+
+    return (0);
+}
