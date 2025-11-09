@@ -1,0 +1,36 @@
+#include <stdio.h>
+
+/**
+ * factorial - Calculates the factorial of a non-negative integer
+ * @n: The integer whose factorial is to be calculated
+ *
+ * Return: The factorial of n. Returns 1 if n is 0.
+ */
+int factorial(int n)
+{
+    if (n < 0)
+    {
+        printf("Error: Negative input not allowed\n");
+        return (-1);
+    }
+    if (n == 0)
+        return (1);
+    return (n * factorial(n - 1));
+}
+
+/**
+ * main - Entry point to test the factorial function
+ *
+ * Return: Always 0 (Success)
+ */
+int main(void)
+{
+    int num = 5;
+    int result;
+
+    result = factorial(num);
+    if (result != -1)
+        printf("Factorial of %d is %d\n", num, result);
+
+    return (0);
+}
