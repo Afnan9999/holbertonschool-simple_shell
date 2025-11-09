@@ -1,4 +1,3 @@
-cat > path_handler.c << 'EOF'
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
