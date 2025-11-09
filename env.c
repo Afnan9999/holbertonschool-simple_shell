@@ -1,4 +1,3 @@
-cat << 'EOF' > env.c
 #include <stdio.h>
 
 extern char **environ;
